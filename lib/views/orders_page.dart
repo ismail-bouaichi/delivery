@@ -8,10 +8,11 @@ class OrdersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MainLayout(
-      title: 'Orders',
-      
-      child: Obx(() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Orders'),
+      ),
+      body: Obx(() {
         if (orderController.status.value.isLoading) {
           return Center(child: CircularProgressIndicator());
         } else if (orderController.status.value.isError) {

@@ -7,13 +7,44 @@ import 'package:http/http.dart' as http;
 import 'package:my_app/constants/constant.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:my_app/views/login_page.dart';
+import 'package:my_app/models/user.dart';
+
 class AuthenticationController extends GetxController {
 
   final isLoading=false.obs;
-
   final token=''.obs;
-
+  final Rx<User?> currentUser = Rx<User?>(null);
   final box=GetStorage();
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Try to load user data if token exists
+    final savedToken = box.read('token');
+    if (savedToken != null) {
+      token.value = savedToken;
+      _loadUserData();
+    }
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${url}user/profile'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ${token.value}',
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final userData = json.decode(response.body);
+        currentUser.value = User.fromJson(userData['user'] ?? userData);
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    }
+  }
 
   Future register({required String name,required String email,required String username,required String password})async{
     
@@ -36,8 +67,18 @@ class AuthenticationController extends GetxController {
     if (response.statusCode==200) {
     isLoading.value=false;
        token.value=json.decode(response.body)['token'];
-    box.write('token', token.value);  
-        Get.toNamed('/home');
+    box.write('token', token.value);
+    
+    // Load user data if available in the response
+    final responseData = json.decode(response.body);
+    if (responseData['user'] != null) {
+      currentUser.value = User.fromJson(responseData['user']);
+    } else {
+      // Load user data with a separate call
+      await _loadUserData();
+    }
+    
+    Get.toNamed('/home');
     }else{
        isLoading.value=false;
        Get.snackbar(
@@ -78,6 +119,15 @@ class AuthenticationController extends GetxController {
       if (response.statusCode == 200) {
         token.value = decodedResponse['token'];
         box.write('token', token.value);
+        
+        // Load user data if available in the response
+        if (decodedResponse['user'] != null) {
+          currentUser.value = User.fromJson(decodedResponse['user']);
+        } else {
+          // Load user data with a separate call
+          await _loadUserData();
+        }
+        
         Get.toNamed('/home');
       } else {
         Get.snackbar(
@@ -115,8 +165,9 @@ class AuthenticationController extends GetxController {
       // Clear the token from storage
       await box.remove('token');
       
-      // Reset the token value in the controller
+      // Reset the token and user values in the controller
       token.value = '';
+      currentUser.value = null;
 
       // Redirect to the login page
       Get.offAll(() => const LoginPage()); // Replace LoginPage with your actual login page widget

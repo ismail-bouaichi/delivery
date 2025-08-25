@@ -58,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
               style: ElevatedButton.styleFrom(
                 elevation: 0,
                 
-                backgroundColor: Colors.black,
+                backgroundColor: Colors.blue,
                 padding: const EdgeInsets.symmetric(horizontal: 50,vertical: 15)
               ),
               onPressed: ()async{
@@ -90,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Text('Create a New Account',
                   style: GoogleFonts.poppins(
                     fontSize: size*0.040,
-                     color:Colors.black,
+                     color:Colors.blue,
                     ),
                  
                   ))

@@ -75,7 +75,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
                     
-                    backgroundColor: Colors.black,
+                    backgroundColor: Colors.blue,
                     padding: const EdgeInsets.symmetric(horizontal: 50,vertical: 15)
                   ),
                   onPressed: ()async{
@@ -109,7 +109,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text('Already got Account',
                   style: GoogleFonts.poppins(
                     fontSize: size*0.040,
-                     color:Colors.black,
+                     color:Colors.blue,
                     ),
                  
                   ))

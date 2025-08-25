@@ -3,24 +3,19 @@ import 'package:get/get.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:my_app/config/app_icons.dart';
 import 'package:my_app/views/components/bottom_navigation_item.dart';
-import 'package:my_app/models/user.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
   final String title;
   final List<Widget>? actions;
-  final Widget? floatingActionButton; 
-  final User ?user;
-
+  final Widget? floatingActionButton;
 
   MainLayout({
     Key? key, 
     required this.child, 
     required this.title,
     this.actions,
-     this.floatingActionButton,
-     this.user,  // Add this line
-
+    this.floatingActionButton,
   }) : super(key: key);
 
   final Rx<Menus> _currentIndex = Menus.home.obs;
@@ -34,8 +29,7 @@ class MainLayout extends StatelessWidget {
       ),
       body: child,
       bottomNavigationBar: _buildBottomNavigationBar(),
-            floatingActionButton: floatingActionButton,  // Add this line
-
+      floatingActionButton: floatingActionButton,
     );
   }
 
@@ -96,19 +90,25 @@ class MainLayout extends StatelessWidget {
           _currentIndex.value = menu;
           switch (menu) {
             case Menus.home:
-              Get.offNamed('/home');
+              // Change from Get.offNamed to Get.toNamed to preserve navigation stack
+              if (Get.currentRoute != '/home') {
+                Get.toNamed('/home');
+              }
               break;
             case Menus.map:
-              // Since map requires an order argument, we can't navigate directly.
-              // You might want to handle this differently.
+              // Navigate to all orders map page
+              Get.toNamed('/all-orders-map');
               break;
             case Menus.orders:
-              Get.offNamed('/orders');
+              Get.toNamed('/orders');
               break;
             case Menus.profile:
-              Get.toNamed('/profile', arguments: user!.id);
+              // For now, use a default user ID since we don't have user data loaded
+              // In a real app, you'd get this from the auth token or API
+              Get.toNamed('/profile', arguments: 1);
               break;
-            default:
+            case Menus.add:
+              // Handle add functionality if needed
               break;
           }
         },

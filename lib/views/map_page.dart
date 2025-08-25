@@ -175,17 +175,18 @@ class _MapPageState extends State<MapPage> {
                         children: [
                           TileLayer(
                             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                            userAgentPackageName: 'com.example.app',
+                            userAgentPackageName: 'com.example.my_app',
                           ),
-                          PolylineLayer(
-                            polylines: [
-                              Polyline(
-                                points: _routePoints,
-                                color: Colors.blue,
-                                strokeWidth: 4.0,
-                              ),
-                            ],
-                          ),
+                          if (_routePoints.isNotEmpty)
+                            PolylineLayer(
+                              polylines: [
+                                Polyline(
+                                  points: _routePoints,
+                                  color: Colors.blue,
+                                  strokeWidth: 4.0,
+                                ),
+                              ],
+                            ),
                           PopupMarkerLayer(
                             options: PopupMarkerLayerOptions(
                               popupController: _popupController,
