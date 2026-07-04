@@ -48,8 +48,9 @@ class _AllOrdersMapPageState extends State<AllOrdersMapPage> {
       var status = await Permission.location.request();
       if (status.isGranted) {
         Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
+      );
         _updateUserLocation(position);
       } else {
         setState(() {

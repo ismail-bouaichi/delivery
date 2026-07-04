@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:get/get.dart';
+import 'package:my_app/controllers/worker_controller.dart';
 
-import 'package:my_app/views/widgets/input_widget.dart';
-import 'package:my_app/constants/constant.dart';
-
-
+/// Driver profile — reads from GET /api/delivery-worker/me and lets the
+/// driver toggle availability (PUT /api/delivery-worker/{id}/status).
 class ProfilePage extends StatefulWidget {
   final int userId;
 
@@ -16,157 +14,106 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _currentPasswordController;
-  late TextEditingController _newPasswordController;
-  late TextEditingController _confirmPasswordController;
-
-
-  bool _isLoading = true;
-  String _errorMessage = '';
+  final WorkerController _workerController = Get.find<WorkerController>();
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _emailController = TextEditingController();
-    _currentPasswordController = TextEditingController();
-    _newPasswordController = TextEditingController();
-    _confirmPasswordController = TextEditingController();
-    _fetchUserData();
-  }
-
-  Future<void> _fetchUserData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
-    try {
-      final response = await http.get(Uri.parse('${url}user/edit/${widget.userId}'));
-      if (response.statusCode == 200) {
-        final userData = json.decode(response.body);
-        setState(() {
-          _nameController.text = userData['name'];
-          _emailController.text = userData['email'];
-          _isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load user data');
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error fetching user data: $e';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _updateProfile() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
-    try {
-      final response = await http.put(
-        Uri.parse('${url}user/update/${widget.userId}'),
-        body: {
-          'name': _nameController.text,
-          'email': _emailController.text,
-          'current_password': _currentPasswordController.text,
-          'password': _newPasswordController.text,
-          'password_confirmation': _confirmPasswordController.text,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Profile updated successfully')),
-        );
-      } else {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['error'] ?? 'Failed to update profile');
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error updating profile: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    _workerController.fetchProfile();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Profile'),
-      ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_errorMessage.isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 16),
-                      child: Text(_errorMessage, style: TextStyle(color: Colors.red)),
-                    ),
-                  InputWidget(
-                    hintText: 'Name',
-                    controller: _nameController,
-                    obscureText: false,
-                  ),
-                  SizedBox(height: 16),
-                  InputWidget(
-                    hintText: 'Email',
-                    controller: _emailController,
-                    obscureText: false,
-                  ),
-                  SizedBox(height: 24),
-                  Text('Change Password', style: Theme.of(context).textTheme.titleLarge),
-                  SizedBox(height: 16),
-                  InputWidget(
-                    hintText: 'Current Password',
-                    controller: _currentPasswordController,
-                    obscureText: true,
-                  ),
-                  SizedBox(height: 16),
-                  InputWidget(
-                    hintText: 'New Password',
-                    controller: _newPasswordController,
-                    obscureText: true,
-                  ),
-                  SizedBox(height: 16),
-                  InputWidget(
-                    hintText: 'Confirm New Password',
-                    controller: _confirmPasswordController,
-                    obscureText: true,
-                  ),
-                  SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: _updateProfile,
-                    child: Text('Update Profile'),
-                  ),
-                ],
+      appBar: AppBar(title: const Text('My Profile')),
+      body: Obx(() {
+        final profile = _workerController.profile.value;
+        if (profile == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final user = profile['user'] is Map ? profile['user'] : null;
+        final name = user?['name'] ?? profile['name'] ?? '';
+        final email = user?['email'] ?? profile['email'] ?? '';
+        final phone = profile['phone'] ?? '';
+        final vehicle = profile['vehicle_type'] ?? '';
+        final status = _workerController.status.value;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name.toString(),
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 12),
+                    _infoRow(Icons.email, email.toString()),
+                    _infoRow(Icons.phone, phone.toString()),
+                    _infoRow(Icons.directions_car, vehicle.toString()),
+                  ],
+                ),
               ),
             ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Status',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.circle,
+                            size: 12,
+                            color: status == WorkerStatus.available
+                                ? Colors.green
+                                : status == WorkerStatus.onDelivery
+                                    ? Colors.blue
+                                    : Colors.grey),
+                        const SizedBox(width: 8),
+                        Text(status.isEmpty ? 'unknown' : status),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (status != WorkerStatus.onDelivery)
+                      SwitchListTile(
+                        title: const Text('Available for deliveries'),
+                        value: status == WorkerStatus.available,
+                        onChanged: (v) => _workerController.setStatus(
+                            v ? WorkerStatus.available : WorkerStatus.offline),
+                      )
+                    else
+                      const Text(
+                        'You are on a delivery — status will reset when it ends.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
+  Widget _infoRow(IconData icon, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
   }
 }

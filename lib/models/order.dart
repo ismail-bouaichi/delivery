@@ -1,101 +1,159 @@
 import 'dart:convert';
 
-List<Order> ordersFromJson(String str) => 
-    List<Order>.from(json.decode(str)['orders'].map((x) => Order.fromJson(x)));
+List<Order> ordersFromJson(String str) {
+  final decoded = json.decode(str);
+  final list = decoded is List ? decoded : (decoded['orders'] ?? []);
+  return List<Order>.from(list.map((x) => Order.fromJson(x)));
+}
 
-String ordersToJson(List<Order> data) => 
-    json.encode({"orders": List<dynamic>.from(data.map((x) => x.toJson()))});
+/// Order statuses used by the backend delivery-worker API:
+///   paid         -> assigned, waiting for the driver to accept
+///   on_progress  -> accepted, driver is delivering
+///   complete     -> delivered
+class OrderStatus {
+  static const paid = 'paid';
+  static const onProgress = 'on_progress';
+  static const complete = 'complete';
+}
 
 class Order {
-    int id;
-    String firstName;
-    String lastName;
-    String email;
-    String phone;
-    String status;
-    double shippingCost;
-     final double? latitude;
+  final int id;
+  final String firstName;
+  final String lastName;
+  final String? email;
+  final String phone;
+  final String status;
+  final String? address;
+  final String? city;
+  final String? zipCode;
+  final double? latitude;
   final double? longitude;
-    List<OrderDetail> orderDetails;
+  final double shippingCost;
+  final List<OrderDetail> orderDetails;
 
-    Order({
-        required this.id,
-        required this.firstName,
-        required this.lastName,
-        required this.email,
-        required this.phone,
-        required this.status,
-        required this.shippingCost,
-        required this.orderDetails,
-         this.latitude,
+  Order({
+    required this.id,
+    required this.firstName,
+    required this.lastName,
+    this.email,
+    required this.phone,
+    required this.status,
+    this.address,
+    this.city,
+    this.zipCode,
+    this.latitude,
     this.longitude,
-    });
+    this.shippingCost = 0,
+    this.orderDetails = const [],
+  });
 
-    factory Order.fromJson(Map<String, dynamic> json) => Order(
-        id: json["id"],
-        firstName: json["first_name"],
-        lastName: json["last_name"],
-        email: json["email"],
-        phone: json["phone"],
-        status: json["status"],
-         latitude: json['latitude'] != null ? double.parse(json['latitude'].toString()) : null,
-      longitude: json['longitude'] != null ? double.parse(json['longitude'].toString()) : null,
-        shippingCost: double.parse(json["shipping_cost"]),
-        orderDetails: List<OrderDetail>.from(json["order_details"].map((x) => OrderDetail.fromJson(x))),
+  bool get isPending => status == OrderStatus.paid;
+  bool get isInProgress => status == OrderStatus.onProgress;
+  bool get isComplete => status == OrderStatus.complete;
+
+  /// Human-readable delivery address, built from whatever the API sent.
+  String get fullAddress {
+    final parts = [address, city, zipCode]
+        .where((p) => p != null && p.trim().isNotEmpty)
+        .toList();
+    if (parts.isNotEmpty) return parts.join(', ');
+    // Fall back to address stored on the first order detail (older API shape).
+    if (orderDetails.isNotEmpty) {
+      final d = orderDetails.first;
+      final dParts = [d.address, d.city, d.zipCode]
+          .where((p) => p != null && p.trim().isNotEmpty)
+          .toList();
+      if (dParts.isNotEmpty) return dParts.join(', ');
+    }
+    return 'No address';
+  }
+
+  static double? _toDouble(dynamic v) =>
+      v == null ? null : double.tryParse(v.toString());
+
+  factory Order.fromJson(Map<String, dynamic> json) {
+    // The API doc uses "orderDetails"; some responses use "order_details".
+    final rawDetails =
+        (json['orderDetails'] ?? json['order_details'] ?? []) as List;
+    return Order(
+      id: json['id'],
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
+      email: json['email'],
+      phone: json['phone']?.toString() ?? '',
+      status: json['status'] ?? '',
+      address: json['address'],
+      city: json['city'],
+      zipCode: json['zip_code'],
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
+      shippingCost: _toDouble(json['shipping_cost']) ?? 0,
+      orderDetails: rawDetails
+          .map<OrderDetail>((x) => OrderDetail.fromJson(x))
+          .toList(),
     );
+  }
 
-    Map<String, dynamic> toJson() => {
-        "id": id,
-        "first_name": firstName,
-        "last_name": lastName,
-        "email": email,
-        "phone": phone,
-        "status": status,
-        "shipping_cost": shippingCost.toStringAsFixed(2),
-        "order_details": List<dynamic>.from(orderDetails.map((x) => x.toJson())),
-    };
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'phone': phone,
+        'status': status,
+        'address': address,
+        'city': city,
+        'zip_code': zipCode,
+        'latitude': latitude,
+        'longitude': longitude,
+        'shipping_cost': shippingCost.toStringAsFixed(2),
+        'order_details':
+            List<dynamic>.from(orderDetails.map((x) => x.toJson())),
+      };
 }
 
 class OrderDetail {
-    int id;
-    int orderId;
-    int productId;
-    double totalPrice;
-    int quantity;
-    String city;
-    String address;
-    String zipCode;
+  final int? id;
+  final int? orderId;
+  final int productId;
+  final double totalPrice;
 
-    OrderDetail({
-        required this.id,
-        required this.orderId,
-        required this.productId,
-        required this.totalPrice,
-        required this.quantity,
-        required this.city,
-        required this.address,
-        required this.zipCode,
-    });
+  /// Quantity — API doc calls this "amount", older shape calls it "quantity".
+  final int quantity;
+  final String? city;
+  final String? address;
+  final String? zipCode;
 
-    factory OrderDetail.fromJson(Map<String, dynamic> json) => OrderDetail(
-        id: json["id"],
-        orderId: json["order_id"],
-        productId: json["product_id"],
-        totalPrice: double.parse(json["total_price"]),
-        quantity: json["quantity"],
-        city: json["city"],
-        address: json["address"],
-        zipCode: json["zip_code"],
-    );
+  OrderDetail({
+    this.id,
+    this.orderId,
+    required this.productId,
+    required this.totalPrice,
+    required this.quantity,
+    this.city,
+    this.address,
+    this.zipCode,
+  });
 
-    Map<String, dynamic> toJson() => {
-        "id": id,
-        "order_id": orderId,
-        "product_id": productId,
-        "total_price": totalPrice.toStringAsFixed(2),
-        "quantity": quantity,
-        "city": city,
-        "address": address,
-        "zip_code": zipCode,
-    };
+  factory OrderDetail.fromJson(Map<String, dynamic> json) => OrderDetail(
+        id: json['id'],
+        orderId: json['order_id'],
+        productId: json['product_id'],
+        totalPrice: Order._toDouble(json['total_price']) ?? 0,
+        quantity: json['amount'] ?? json['quantity'] ?? 0,
+        city: json['city'],
+        address: json['address'],
+        zipCode: json['zip_code'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'order_id': orderId,
+        'product_id': productId,
+        'total_price': totalPrice.toStringAsFixed(2),
+        'quantity': quantity,
+        'city': city,
+        'address': address,
+        'zip_code': zipCode,
+      };
 }

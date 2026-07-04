@@ -105,8 +105,8 @@ class HomePage extends StatelessWidget {
         SizedBox(height: 12),
         Obx(() {
           final totalOrders = _orderController.orders.length;
-          final pendingOrders = _orderController.orders.where((order) => order.status == 'pending').length;
-          final completedOrders = _orderController.orders.where((order) => order.status == 'completed').length;
+          final pendingOrders = _orderController.orders.where((order) => order.status == 'paid').length;
+          final completedOrders = _orderController.orders.where((order) => order.status == 'complete').length;
 
           return Row(
             children: [
@@ -289,9 +289,9 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildOrderCard(order) {
-    Color statusColor = order.status == 'completed' 
+    Color statusColor = order.status == 'complete' 
         ? Colors.green 
-        : order.status == 'pending' 
+        : order.status == 'paid' 
             ? Colors.orange 
             : Colors.blue;
 
