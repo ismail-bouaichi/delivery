@@ -5,7 +5,7 @@
 ///   flutter build apk --dart-define=API_URL=https://your-domain.com/api/ --dart-define=ORS_API_KEY=xxx
 const String url = String.fromEnvironment(
   'API_URL',
-  defaultValue: 'http://192.168.100.13/api/',
+  defaultValue: 'http://demo.192.168.100.13.nip.io/api/',
 );
 
 /// OpenRouteService key for route drawing on the map.
