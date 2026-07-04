@@ -56,6 +56,17 @@ class AuthenticationController extends GetxController {
     }
   }
 
+  void _showError(String message) {
+    print('AUTH ERROR: $message');
+    Get.rawSnackbar(
+      message: message,
+      backgroundColor: Colors.red,
+      messageText: Text(message, style: const TextStyle(color: Colors.white)),
+      duration: const Duration(seconds: 3),
+      snackPosition: SnackPosition.TOP,
+    );
+  }
+
   void _storeSession(Map<String, dynamic> data) {
     token.value = data['token'];
     box.write('token', token.value);
@@ -101,21 +112,12 @@ class AuthenticationController extends GetxController {
         Get.find<WorkerController>().setStatus(WorkerStatus.available);
         Get.offAllNamed('/home');
       } else {
-        Get.snackbar(
-          'Error',
-          decoded['message'] ?? 'Registration failed',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-        print(decoded);
+        print('REGISTER ERROR: $decoded');
+        _showError(decoded['message'] ?? 'Registration failed');
       }
     } catch (e) {
-      print(e.toString());
-      Get.snackbar('Error', 'An unexpected error occurred',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
+      print('REGISTER EXCEPTION: ${e.toString()}');
+      _showError('Cannot connect to server. Check your network.');
     } finally {
       isLoading.value = false;
     }
@@ -131,35 +133,25 @@ class AuthenticationController extends GetxController {
         body: {'email': email, 'password': password},
       );
 
+      print('LOGIN STATUS: ${response.statusCode}');
+      print('LOGIN BODY: ${response.body}');
+
       if (response.body.isNotEmpty) {
         final decoded = json.decode(response.body);
         if (response.statusCode == 200) {
           _storeSession(decoded);
           if (currentUser.value == null) await _loadUserData();
-          // Driver just opened a session -> available.
           Get.find<WorkerController>().setStatus(WorkerStatus.available);
           Get.offAllNamed('/home');
         } else {
-          Get.snackbar(
-            'Error',
-            decoded['message'] ?? 'An error occurred',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
+          _showError(decoded['message'] ?? 'An error occurred');
         }
       } else {
-        Get.snackbar('Error', 'Empty response from server',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.red,
-            colorText: Colors.white);
+        _showError('Empty response from server');
       }
     } catch (e) {
-      print('Error: ${e.toString()}');
-      Get.snackbar('Error', 'An unexpected error occurred',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
+      print('LOGIN EXCEPTION: ${e.toString()}');
+      _showError('Cannot connect to server. Check your network.');
     } finally {
       isLoading.value = false;
     }
